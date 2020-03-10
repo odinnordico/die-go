@@ -1,37 +1,25 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/url"
 	"time"
 
-	messaging "./communication/messaging/mqtt"
-
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	messaging "./connection/messaging/mqtt"
+        conn "./connection"
 )
 
-func listen(uri *url.URL, topic string) {
-	client := messaging.Connect("sub", uri)
-	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("* [%s] %s\n", msg.Topic(), string(msg.Payload()))
-	})
-}
+const (
+  topic string = "test"
+  ipAddress string = "127.0.0.1"
+  port int16 = 1883
+  protocol string = "mqtt"
+)
+
 
 func main() {
-	uri, err := url.Parse("mqtt://127.0.0.1:1883/test")
-	if err != nil {
-		log.Fatal(err)
-	}
-	topic := uri.Path[1:len(uri.Path)]
-	fmt.Printf("%s: %v\n", "uri", uri)
-	if topic == "" {
-		topic = "test"
-	}
+  uri := conn.CreateURL(protocol, ipAddress, port, topic)
+	go messaging.Listen("subscriber", &uri, topic, nil)
 
-	go listen(uri, topic)
-
-	client := messaging.Connect("pub", uri)
+	client := messaging.Connect("pub", &uri)
 	timer := time.NewTicker(1 * time.Second)
 	for t := range timer.C {
 		messaging.Publish(client, topic, 0, false, "{msg="+t.String()+"}")
